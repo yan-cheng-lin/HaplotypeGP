@@ -1,0 +1,705 @@
+---
+title: "03-01_TablesAndFigures"
+author: "Yan-Cheng Lin"
+date: '2023-11-09'
+output: 
+  html_document:
+    code_folding: hide
+    df_print: paged
+---
+
+# Tables and Figures
+
+```{r Settings}
+library(ggplot2)
+library(RColorBrewer)
+library(magrittr)
+library(wesanderson)
+
+
+load("../Data/Results.RData")
+```
+
+## Data
+### Wilcox Test
+```{r wilcox test, rows.print=5}
+PA_wilcox
+```
+
+### Haplotype Statistics
+```{r Haplotype Statistics, rows.print=5}
+HBStat_sum
+```
+
+### Prediction Accuracy
+```{r PA Summary, rows.print=5}
+CV_sum
+```
+
+## Tables
+### Mantel correlation
+```{r Mantel Correlation}
+Man_mat
+```
+
+### Wilcoxon test of prediction accuracy (scenario1)
+```{r Wilcoxon Significance}
+sign_mat <- matrix(nrow = 3, ncol = 3,
+                   dimnames = list(c("FixedHB", "HaploView", "HaploBlocker"),
+                                   c("Decreased", "Increased", "Equal")))
+for (m in c("FixedHB", "HaploView", "HaploBlocker")){
+  
+  PA_wilcox_sub <- subset(PA_wilcox, HBMethod == m )
+  
+  sign_mat[ m, "Decreased"] <- with(PA_wilcox_sub,
+                                   sum(Difference < 0 & pvalue_bon < 0.05))
+  sign_mat[ m, "Increased"] <- with(PA_wilcox_sub,
+                                   sum(Difference > 0 & pvalue_bon < 0.05))
+  sign_mat[ m, "Equal"] <- with(PA_wilcox_sub,
+                                   sum(pvalue_bon > 0.05))
+}
+
+sign_mat
+
+```
+
+### Number of haplotypes (dimention reduction)
+```{r Number of Haplotype}
+nHB_Table <- cbind(
+  subset(HBStat_sum, select = nHB_filter,
+       Scenario == "Scenario1" &
+         HBMethod == "FixedHB" &
+         Param1 == "win20"),
+subset(HBStat_sum, select = nHB_filter,
+       Scenario == "Scenario1" &
+         HBMethod == "HaploView" &
+         Param1 == "GAB"),
+subset(HBStat_sum, select = nHB_filter,
+       Scenario == "Scenario1" &
+         HBMethod == "HaploBlocker" &
+         Param1 == "win20" &
+         Param2 == "tc99")
+) %>%
+  set_colnames(c("FixedHB", "HaploView", "HaploBlocker")) %>%
+  set_rownames(c("DH_KE", "DH_PE", "GC_KE", "GC_PE"))
+
+print(nHB_Table)
+
+```
+
+## Figures
+### Haplotype Charateristics
+```{r Fig_scen1_LenVSnHB_FHB, out.width="50%", out.height="50%", dpi=300, fig.height = 6, fig.width = 10, fig.align = "center"}
+
+# Subset Data #
+dat_plot <- subset(HBStat_sum,
+                   Scenario == "Scenario1")
+
+# Plot #
+ggplot(data = subset(dat_plot, HBMethod == "FixedHB"),
+         aes(x = nMR_Mean, y = nHB_filter/1000, group = Train, color = Train)) +
+    geom_point(shape = 4, size = 4) +
+    geom_line() +
+    theme_bw(base_size = 20) +
+    scale_x_continuous(breaks = c(5,10,20,50,100)) +
+    labs(title = "FixedHB",
+         x = "Haplotype Length (SNPs)",
+         y = "Total Number of Alleles (K)",
+         color = "Population") +
+    scale_color_manual(values = c(wes_palette(name="Darjeeling1")[c(1,3,5)],
+                                  wes_palette(name="Rushmore")[c(3)])) 
+
+```
+
+```{r Fig_scen1_LenVSnHB_HV, out.width="50%", out.height="50%", dpi=300, fig.height = 6, fig.width = 10, fig.align = "center"}
+# Subset Data #
+dat_plot <- subset(HBStat_sum,
+                   Scenario == "Scenario1")
+
+# Plot #
+  ggplot(data = subset(dat_plot, HBMethod == "HaploView"),
+         aes(x = nMR_Mean, y = nHB_filter/1000, group = Train, color = Train, shape = Param1)) +
+    geom_point(size = 4) +
+    labs(title = "HaploView",
+         x = "Haplotype Length (SNPs)",
+         y = "Total Number of Alleles (K)",
+         color = "Population",
+         shape = "Algorithm") +
+    theme_bw(base_size = 20) +
+    scale_shape_manual(values = 16:18,
+                       labels = c("4GAM", "GABRIEL", "SPINE")) +
+    scale_color_manual(values = c(wes_palette(name="Darjeeling1")[c(1,3,5)],
+                                  wes_palette(name="Rushmore")[c(3)])) 
+    
+```
+
+```{r Fig_scen1_LenVSnHB_HB, out.width="50%", out.height="50%", dpi=300, fig.height = 6, fig.width = 10, fig.align = "center"}
+
+  # Subset Data #
+dat_plot <- subset(HBStat_sum,
+                   Scenario == "Scenario1")
+
+# Plot #
+ggplot(data = subset(dat_plot, HBMethod == "HaploBlocker"),
+         aes(x = nMR_Mean, y = nHB_filter/1000, group = Train, color = Train)) +
+    geom_point(size = 3) +
+    labs(title = "HaploBlocker",
+         x = "Haplotype Length (SNPs)",
+         y = "Total Number of Alleles (K)",
+         color = "Population") +
+    theme_bw(base_size = 20) +
+    scale_color_manual(values = c(wes_palette(name="Darjeeling1")[c(1,3,5)],
+                                  wes_palette(name="Rushmore")[c(3)]))  
+
+
+```
+
+### Prediction Accuracy (SNP vs HB)
+```{r Fig_scen1_SNPvsHB, dpi=300, fig.height = 6, fig.width = 12, fig.align = "center"}
+
+# Scenario 1 #
+# Select the optimal haplotype sets #
+sel <- with(CV_sum, (Scenario == "Scenario1") &
+              ((HBMethod == "FixedHB" & Param1 == "win20")|
+                 (HBMethod == "HaploView" & Param1 == "GAB")|
+                 (HBMethod == "HaploBlocker" & Param1 == "win20" & Param2 == "tc99"))
+            )
+
+dat_plot <- CV_sum[ sel,]
+dat_plot_snp <- subset(CV_sum,
+                       Scenario == "Scenario1" & HBMethod == "SNP")
+
+key <- match(paste(dat_plot$Trait, dat_plot$Train),
+             paste(dat_plot_snp$Trait, dat_plot_snp$Train))
+dat_plot$PA_SNP <- dat_plot_snp[key, "PA"]
+dat_plot$HBMethod <- factor(dat_plot$HBMethod,
+                              levels = c("FixedHB", "HaploView", "HaploBlocker"))
+  
+
+# Fig_scen1_SNPvsHB #  
+ggplot(data = dat_plot, aes(x = PA_SNP, y = PA, color = Train, shape = Trait)) +
+    geom_abline(slope = 1, intercept = 0) +
+    geom_point(size = 3) +
+    scale_shape_manual(values = c(8, 15:18)) +
+    facet_grid(cols = vars(HBMethod)) +
+    theme_bw(base_size = 20) +
+    labs(title = "Scenario 1",
+         x = "Prediction Accuracy (SNP)",
+         y = "Prediction Accuracy (HB)",
+         color = "Population", shape = "Trait") +
+    scale_color_manual(values = c(wes_palette(name="Darjeeling1")[c(1,3,5)],
+                                  wes_palette(name="Rushmore")[c(3)]))    
+    
+
+```
+
+```{r Fig_scen2_SNPvsHB, dpi=300, fig.height = 6, fig.width = 12, fig.align = "center"}
+# Scenario 2 #
+# Select the optimal haplotype sets #
+sel <- with(CV_sum, (Scenario == "Scenario2") &
+              ((HBMethod == "FixedHB" & Param1 == "win20")|
+                 (HBMethod == "HaploView" & Param1 == "GAB")|
+                 (HBMethod == "HaploBlocker" & grepl(Train, pattern = "KE") &
+                    Param1 == "MinSubgroup40" & Param2 == "MCMB1")|
+                 (HBMethod == "HaploBlocker" & grepl(Train, pattern = "PE") &
+                    Param1 == "MinSubgroup40" & Param2 == "MCMB1250"))
+            )
+
+dat_plot <- CV_sum[ sel,]
+dat_plot_snp <- subset(CV_sum, 
+                       Scenario == "Scenario2" & HBMethod == "SNP")
+
+key <- match(paste(dat_plot$Trait, dat_plot$Train),
+             paste(dat_plot_snp$Trait, dat_plot_snp$Train))
+dat_plot$PA_SNP <- dat_plot_snp[key, "PA"]
+dat_plot$HBMethod <- factor(dat_plot$HBMethod,
+                              levels = c("FixedHB", "HaploView", "HaploBlocker"))
+  
+
+# Fig_scen2_SNPvsHB #  
+ggplot(data = dat_plot, aes(x = PA_SNP, y = PA, color = Train, shape = Trait)) +
+    geom_abline(slope = 1, intercept = 0) +
+    geom_point(size = 3) +
+    scale_shape_manual(values = c(8, 15:18)) +
+    facet_grid(cols = vars(HBMethod)) +
+    theme_bw(base_size = 20) +
+    labs(title = "Scenario 2",
+         x = "Prediction Accuracy (SNP)",
+         y = "Prediction Accuracy (HB)",
+         color = "Population", shape = "Trait") +
+    scale_color_manual(values = c(wes_palette(name="Darjeeling1")[c(1,3,5)],
+                                  wes_palette(name="Rushmore")[c(3)]))    
+
+```
+
+```{r Fig_scen3_SNPvsHB, dpi=300, fig.height = 9, fig.width = 12, fig.align = "center"}
+# Scenario 3 #
+# Select the optimal haplotype sets #
+sel <- with(CV_sum, (Scenario == "Scenario3") &
+              ((HBMethod == "FixedHB" & Param1 == "win10")|
+                 (HBMethod == "HaploView" & Param1 == "GAB")|
+                 (HBMethod == "HaploBlocker" & grepl(Train, pattern = "DH") &
+                    Param1 == "MinSubgroup20" & Param2 == "MCMB1250")|
+                 (HBMethod == "HaploBlocker" & grepl(Train, pattern = "GC") &
+                    Param1 == "MinSubgroup0" & Param2 == "MCMB1"))
+            )
+
+dat_plot <- CV_sum[ sel,]
+dat_plot_snp <- subset(CV_sum, 
+                       Scenario == "Scenario3" & HBMethod == "SNP")
+
+key <- match(paste(dat_plot$Trait, dat_plot$Train),
+             paste(dat_plot_snp$Trait, dat_plot_snp$Train))
+dat_plot$PA_SNP <- dat_plot_snp[key, "PA"]
+dat_plot$HBMethod <- factor(dat_plot$HBMethod,
+                              levels = c("FixedHB", "HaploView", "HaploBlocker"))
+dat_plot$DHorGC <- substr(dat_plot$Train, start = 1, stop = 2)
+
+
+# Fig_scen3_SNPvsHB #  
+ggplot(data = dat_plot, aes(x = PA_SNP, y = PA, color = Train, shape = Trait)) +
+      geom_abline(slope = 1, intercept = 0) +
+      geom_point(size = 4) +
+      scale_shape_manual(values = c(8, 15:18)) +
+      facet_grid(rows = vars(DHorGC), cols = vars(HBMethod)) +
+      theme_bw(base_size = 20) +
+      labs(title = "Scenario 3",
+           x = "Prediction Accuracy (SNP)",
+           y = "Prediction Accuracy (HB)",
+           color = "Prediction Set", shape = "Trait")+
+      scale_color_manual(values = c(wes_palette(name="Darjeeling1")[c(1,3,5)],
+                                    wes_palette(name="Rushmore")[c(3)]))    
+```
+
+### Impact of Parameters
+#### Scenario 1
+HaploBlocker
+```{r Fig_scen1_ParamvsLen_HB, dpi=300, out.width="50%", out.height="50%", fig.height = 8, fig.width = 8, fig.align = "center"}
+
+dat_plot <- subset(HBStat_sum,
+                   Scenario == "Scenario1" &
+                     HBMethod == "HaploBlocker" &
+                     !Param2 == "NoTC")
+
+dat_plot$Param1 <- factor(dat_plot$Param1,
+                          levels = c("win0", "win5", "win10", "win20", "win50", "win100" 
+                                     ),
+                          labels = c("MultiWin", "5", "10", "20", "50", "100"))
+dat_plot$Param2 <- factor(dat_plot$Param2,
+                          levels = c("tc80", "tc85", "tc90", "tc95", "tc99"),
+                          labels = c("80", "85", "90", "95", "99"))
+
+cols <- c("MultiWin" = "#4DAF4A", # green
+              "5" = brewer.pal(8, "RdYlBu")[8],
+              "10" = brewer.pal(8, "RdYlBu")[7],
+              "20" = brewer.pal(8, "RdYlBu")[6],
+              "50" = brewer.pal(8, "RdYlBu")[2],
+              "100" = brewer.pal(8, "RdYlBu")[1]
+              )
+
+## Params vs Length (HaploBlocker) ##
+ggplot(data = dat_plot, aes(x = Param2, y = nMR_Mean, color = Param1, group = paste(Param1, Train))) +
+      geom_line() +
+      geom_point() +
+      labs(title = "HaploBlocker (scenario 1)",
+           x = "Target Coverage",
+           y = "Haplotype Length (SNPs)",
+           color = "Window Size") +
+      facet_grid(rows = vars(Train), scale = "free") +
+      theme_bw(base_size = 20) +
+      theme(axis.text.x=element_text(angle = -45, hjust = 0)) +
+      scale_color_manual(values = cols)
+    
+```
+
+```{r Fig_scen1_ParamvsPA_HB, dpi=300, out.width="50%", out.height="50%", fig.height = 8, fig.width = 8, fig.align = "center"}
+
+# Data preparation #
+dat_plot <- subset(CV_sum,
+                   Scenario == "Scenario1" &
+                     HBMethod == "HaploBlocker" &
+                     !Param2 == "NoTC")
+
+dat_plot <- aggregate(data = dat_plot,
+          PA ~ Train + Param1 + Param2,
+          mean)
+
+dat_plot$Param1 <- factor(dat_plot$Param1,
+                          levels = c("win0", "win5", "win10", "win20", "win50", "win100" 
+                                     ),
+                          labels = c("MultiWin", "5", "10", "20", "50", "100"))
+dat_plot$Param2 <- factor(dat_plot$Param2,
+                          levels = c("tc80", "tc85", "tc90", "tc95", "tc99"),
+                          labels = c("80", "85", "90", "95", "99"))
+
+
+## Params vs PA (HaploBlocker) ##
+ggplot(data = dat_plot, aes(x = Param2, y = PA, color = Param1, group = paste(Param1, Train))) +
+      geom_line() +
+      geom_point() +
+      labs(title = "HaploBlocker (scenario 1)",
+           x = "Target Coverage",
+           y = "Prediction Accuracy",
+           color = "Window Size") +
+      facet_grid(rows = vars(Train), scales = "free") +
+      theme_bw(base_size = 20) +
+      theme(axis.text.x=element_text(angle = -45, hjust = 0)) +
+      scale_color_manual(values = cols)
+
+```
+
+FixedHB
+```{r Fig_scen1_ParamvsPA_FH, dpi=300, fig.height = 6, fig.width = 12, fig.align = "center"}
+
+# Data preparation #
+dat_plot <- subset(CV_sum,
+                   Scenario == "Scenario1" & HBMethod == "FixedHB")
+dat_plot_snp <- subset(CV_sum,
+                   Scenario == "Scenario1" & HBMethod == "SNP")
+dat_plot$Param1 <- factor(dat_plot$Param1,
+                          levels = c("win5", "win10", "win20", "win50", "win100"),
+                          labels = c("5", "10", "20", "50", "100"))
+  
+key <- match(paste(dat_plot$Trait, dat_plot$Train),
+             paste(dat_plot_snp$Trait, dat_plot_snp$Train))
+
+
+## Params vs PA (FixedHB) ##
+ggplot(data = dat_plot,
+       aes(x = Param1, y = PA, color = Trait, shape = Trait, group = paste(Trait, Train))) +
+    geom_point(size = 2) +
+    geom_line() +
+    geom_abline(data = dat_plot_snp, aes(intercept = PA, slope = 0, color = Trait), linetype = "dashed") +
+    scale_shape_manual(values=c(8, 15:18)) +
+    facet_grid(cols = vars(Train), scales = "free_y") +
+    labs(title = "FixedHB (scenario 1)",
+         x = "Window Size",
+         y = "Prediction Accuracy") +
+    theme_bw(base_size = 20) +
+    theme(axis.text.x=element_text(angle = -45, hjust = 0)) +
+    guides(color = guide_legend("Trait"), shape = guide_legend("Trait")) +
+    scale_color_brewer(palette = "Set1") 
+    
+
+```
+
+HaploView
+```{r Fig_scen1_ParamvsPA_HV, dpi=300, fig.height =6, fig.width = 12, fig.align = "center"}
+# Data preparation #
+dat_plot <- subset(CV_sum,
+                   Scenario == "Scenario1" & HBMethod == "HaploView")
+dat_plot_snp <- subset(CV_sum,
+                   Scenario == "Scenario1" & HBMethod == "SNP")
+  
+dat_plot <- merge(dat_plot, dat_plot_snp,
+        by = c("Trait", "Train"),
+        suffixes = c("_HB", "_SNP"))
+  
+dat_plot$PA_diff <- dat_plot$PA_HB - dat_plot$PA_SNP  
+  
+
+## Params vs PA (HaploView) ##
+ggplot(data = dat_plot,
+           aes(x = Trait, y = PA_diff, fill = Param1_HB, group = Param1_HB)) +
+    geom_bar(position="dodge", stat="identity") +
+    facet_grid(cols = vars(Train), scales = "free_y") +
+    labs(title = "HaploView (scenario 1)",
+         x = "Methods",
+         y = "Relative Prediction Accuracy") +
+    theme_bw(base_size = 20) +
+    scale_fill_brewer(palette = "Set1", name = "Methods") + 
+    theme(axis.text.x=element_text(angle = -45, hjust = 0))
+
+```
+
+#### Scenario 2
+HaploBlocker
+```{r Fig_scen2_ParamvsLen_HB, dpi=300, fig.height = 6, fig.width = 12, fig.align = "center"}
+
+dat_plot <- subset(HBStat_sum,
+                   Scenario == "Scenario2" &
+                     HBMethod == "HaploBlocker")
+
+dat_plot$Param1 <- factor(dat_plot$Param1,
+                          levels = c("MinSubgroup0", "MinSubgroup5","MinSubgroup20", "MinSubgroup40", "MinSubgroup80", "MinSubgroup160"),
+                          labels = c("0", "5","20", "40", "80", "160"))
+
+dat_plot$Param2 <- factor(dat_plot$Param2,
+                          levels = c("MCMB1", "MCMB1250", "MCMB5000", "MCMB20000", "MCMB80000"),
+                          labels = c("1", "1250","5000", "20000", "80000"))
+
+
+ggplot(data = dat_plot,
+       aes(y = nMR_Mean, x = Param2, group = paste(Train, Param1),
+               shape = Param1, color = Train))+
+    geom_point(size = 4) +
+    geom_line() +
+    labs(title = "HaploBlocker Length (scenario 2)",
+         x = "MCMB",
+         y = "Haplotype Length",
+         color = "Landrace",
+         shape = "Min Subgroup") +
+    theme_bw(base_size = 20) +
+    scale_color_brewer(palette = "Set1") +
+    guides(color = guide_legend(order = 1)) +
+    theme(axis.text.x=element_text(angle = -45, hjust = 0))
+    
+```
+
+```{r Fig_scen2_ParamvsCG_HB, dpi=300, fig.height = 6, fig.width = 12, fig.align = "center"}
+
+dat_plot <- subset(HBStat_sum,
+                   Scenario == "Scenario2" &
+                     HBMethod == "HaploBlocker")
+
+dat_plot$Param1 <- factor(dat_plot$Param1,
+                          levels = c("MinSubgroup0", "MinSubgroup5","MinSubgroup20", "MinSubgroup40", "MinSubgroup80", "MinSubgroup160"),
+                          labels = c("0", "5","20", "40", "80", "160"))
+
+dat_plot$Param2 <- factor(dat_plot$Param2,
+                          levels = c("MCMB1", "MCMB1250", "MCMB5000", "MCMB20000", "MCMB80000"),
+                          labels = c("1", "1250","5000", "20000", "80000"))
+
+
+ggplot(data = dat_plot,
+       aes(y = GenomeCoverage, x = Param2, group = paste(Train, Param1),
+               shape = Param1, color = Train))+
+    geom_point(size = 4) +
+    geom_line() +
+    labs(title = "HaploBlocker Coverage (scenario 2)",
+         x = "MCMB",
+         y = "Genome Coverage",
+         color = "Landrace",
+         shape = "Min Subgroup") +
+    theme_bw(base_size = 20) +
+    scale_color_brewer(palette = "Set1") +
+    guides(color = guide_legend(order = 1)) +
+    theme(axis.text.x=element_text(angle = -45, hjust = 0))
+    
+```
+
+```{r Fig_scen2_ParamvsPA_HB, dpi=300, fig.height = 6, fig.width = 12, fig.align = "center"}
+
+dat_sub <- subset(CV_sum,
+                   Scenario == "Scenario2" &
+                     HBMethod == "HaploBlocker" &
+                    !Param1 %in% c("MinSubgroup30", "MinSubgroup50"))
+
+dat_sub$Param1 <- factor(dat_sub$Param1,
+                          levels = c("MinSubgroup0", "MinSubgroup5","MinSubgroup20", "MinSubgroup40", "MinSubgroup80", "MinSubgroup160"),
+                          labels = c("0", "5","20", "40", "80", "160"))
+
+dat_sub$Param2 <- factor(dat_sub$Param2,
+                          levels = c("MCMB1", "MCMB1250", "MCMB5000", "MCMB20000", "MCMB80000"),
+                          labels = c("1", "1250","5000", "20000", "80000"))
+
+
+dat_sub$Pop <- substr(dat_sub$Train, start = 4, stop = 5)
+
+CV_merge <- aggregate(data = dat_sub,
+                      PA ~ Pop + Param1 + Param2,
+                      mean)
+
+dat_plot <- with(data = CV_merge,
+                   data.frame(PA = PA,
+                              Param = c(Param1, Param2),
+                              Pop = Pop,
+                              Group = rep(c("subpop", "MCMB"), each = nrow(CV_merge))))
+    
+dat_plot$Group <- factor(dat_plot$Group,
+                           levels = c("MCMB", "subpop"),
+                           labels = c("MCMB", "Min Subgroup"))
+
+
+  
+ggplot(data = dat_plot, aes(x = Param, y = PA)) +
+    geom_boxplot() +
+    facet_grid(cols = vars(Group), rows = vars(Pop), scales = c("free")) +
+    labs(title = "HaploBlocker Optimization (scenario 2)",
+         x = "Parameters",
+         y = "Prediction Accuracy") +
+    theme_bw(base_size = 20) +
+    theme(axis.text.x=element_text(angle = -45, hjust = 0))  
+    
+```
+
+FixedHB
+```{r Fig_scen2_ParamvsPA_FH, dpi=300, fig.height = 6, fig.width = 12, fig.align = "center"}
+
+# Data preparation #
+dat_plot <- subset(CV_sum,
+                   Scenario == "Scenario2" & HBMethod == "FixedHB")
+dat_plot_snp <- subset(CV_sum,
+                   Scenario == "Scenario2" & HBMethod == "SNP")
+dat_plot$Param1 <- factor(dat_plot$Param1,
+                          levels = c("win5", "win10", "win20", "win50", "win100"),
+                          labels = c("5", "10", "20", "50", "100"))
+  
+key <- match(paste(dat_plot$Trait, dat_plot$Train),
+             paste(dat_plot_snp$Trait, dat_plot_snp$Train))
+
+
+## Params vs PA (FixedHB) ##
+ggplot(data = dat_plot,
+       aes(x = Param1, y = PA, color = Trait, shape = Trait, group = paste(Trait, Train))) +
+    geom_point(size = 2) +
+    geom_line() +
+    geom_abline(data = dat_plot_snp, aes(intercept = PA, slope = 0, color = Trait), linetype = "dashed") +
+    scale_shape_manual(values=c(8, 15:18)) +
+    facet_grid(cols = vars(Train), scales = "free_y") +
+    labs(title = "FixedHB (scenario 2)",
+         x = "Window Size",
+         y = "Prediction Accuracy") +
+    theme_bw(base_size = 20) +
+    theme(axis.text.x=element_text(angle = -45, hjust = 0)) +
+    guides(color = guide_legend("Trait"), shape = guide_legend("Trait")) +
+    scale_color_brewer(palette = "Set1") 
+    
+
+```
+#### Scenario 3
+HaploBlocker
+```{r Fig_scen3_ParamvsLen_HB, dpi=300, fig.height = 6, fig.width = 12, fig.align = "center"}
+
+dat_plot <- subset(HBStat_sum,
+                   Scenario == "Scenario3" &
+                     HBMethod == "HaploBlocker")
+
+dat_plot$Param1 <- factor(dat_plot$Param1,
+                          levels = c("MinSubgroup0", "MinSubgroup5","MinSubgroup20", "MinSubgroup40", "MinSubgroup80", "MinSubgroup160"),
+                          labels = c("0", "5","20", "40", "80", "160"))
+
+dat_plot$Param2 <- factor(dat_plot$Param2,
+                          levels = c("MCMB1", "MCMB1250", "MCMB5000", "MCMB20000", "MCMB80000"),
+                          labels = c("1", "1250","5000", "20000", "80000"))
+
+
+ggplot(data = dat_plot,
+       aes(y = nMR_Mean, x = Param2, group = paste(Train, Param1),
+               shape = Param1, color = Train))+
+    geom_point(size = 4) +
+    geom_line() +
+    labs(title = "HaploBlocker Length (scenario 3)",
+         x = "MCMB",
+         y = "Haplotype Length",
+         color = "Population",
+         shape = "Min Subgroup") +
+    theme_bw(base_size = 20) +
+    scale_color_brewer(palette = "Set1") +
+    guides(color = guide_legend(order = 1)) +
+    theme(axis.text.x=element_text(angle = -45, hjust = 0))
+    
+```
+
+```{r Fig_scen3_ParamvsCG_HB, dpi=300, fig.height = 6, fig.width = 12, fig.align = "center"}
+
+dat_plot <- subset(HBStat_sum,
+                   Scenario == "Scenario3" &
+                     HBMethod == "HaploBlocker")
+
+dat_plot$Param1 <- factor(dat_plot$Param1,
+                          levels = c("MinSubgroup0", "MinSubgroup5","MinSubgroup20", "MinSubgroup40", "MinSubgroup80", "MinSubgroup160"),
+                          labels = c("0", "5","20", "40", "80", "160"))
+
+dat_plot$Param2 <- factor(dat_plot$Param2,
+                          levels = c("MCMB1", "MCMB1250", "MCMB5000", "MCMB20000", "MCMB80000"),
+                          labels = c("1", "1250","5000", "20000", "80000"))
+
+
+ggplot(data = dat_plot,
+       aes(y = GenomeCoverage, x = Param2, group = paste(Train, Param1),
+               shape = Param1, color = Train))+
+    geom_point(size = 4) +
+    geom_line() +
+    labs(title = "HaploBlocker Coverage (scenario 3)",
+         x = "MCMB",
+         y = "Genome Coverage",
+         color = "Population",
+         shape = "Min Subgroup") +
+    theme_bw(base_size = 20) +
+    scale_color_brewer(palette = "Set1") +
+    guides(color = guide_legend(order = 1)) +
+    theme(axis.text.x=element_text(angle = -45, hjust = 0))
+    
+```
+
+```{r Fig_scen3_ParamvsPA_HB, dpi=300, fig.height = 6, fig.width = 12, fig.align = "center"}
+
+dat_sub <- subset(CV_sum,
+                   Scenario == "Scenario3" &
+                     HBMethod == "HaploBlocker")
+
+dat_sub$Param1 <- factor(dat_sub$Param1,
+                          levels = c("MinSubgroup0", "MinSubgroup5","MinSubgroup20", "MinSubgroup40", "MinSubgroup80", "MinSubgroup160"),
+                          labels = c("0", "5","20", "40", "80", "160"))
+
+dat_sub$Param2 <- factor(dat_sub$Param2,
+                          levels = c("MCMB1", "MCMB1250", "MCMB5000", "MCMB20000", "MCMB80000"),
+                          labels = c("1", "1250","5000", "20000", "80000"))
+
+
+dat_sub$Pop <- substr(dat_sub$Train, start = 1, stop = 2)
+
+CV_merge <- aggregate(data = dat_sub,
+                      PA ~ Pop + Param1 + Param2,
+                      mean)
+
+dat_plot <- with(data = CV_merge,
+                   data.frame(PA = PA,
+                              Param = c(Param1, Param2),
+                              Pop = Pop,
+                              Group = rep(c("subpop", "MCMB"), each = nrow(CV_merge))))
+    
+dat_plot$Group <- factor(dat_plot$Group,
+                           levels = c("MCMB", "subpop"),
+                           labels = c("MCMB", "Min Subgroup"))
+
+
+  
+ggplot(data = dat_plot, aes(x = Param, y = PA)) +
+    geom_boxplot() +
+    facet_grid(cols = vars(Group), rows = vars(Pop), scales = c("free")) +
+    labs(title = "HaploBlocker Optimization (scenario 3)",
+         x = "Parameters",
+         y = "Prediction Accuracy") +
+    theme_bw(base_size = 20) +
+    theme(axis.text.x=element_text(angle = -45, hjust = 0))  
+    
+```
+
+FixedHB
+```{r Fig_scen3_ParamvsPA_FH, dpi=300, fig.height = 6, fig.width = 12, fig.align = "center"}
+
+# Data preparation #
+dat_plot <- subset(CV_sum,
+                   Scenario == "Scenario3" & HBMethod == "FixedHB")
+dat_plot_snp <- subset(CV_sum,
+                   Scenario == "Scenario3" & HBMethod == "SNP")
+dat_plot$Param1 <- factor(dat_plot$Param1,
+                          levels = c("win5", "win10", "win20", "win50", "win100"),
+                          labels = c("5", "10", "20", "50", "100"))
+  
+key <- match(paste(dat_plot$Trait, dat_plot$Train),
+             paste(dat_plot_snp$Trait, dat_plot_snp$Train))
+
+
+## Params vs PA (FixedHB) ##
+ggplot(data = dat_plot,
+       aes(x = Param1, y = PA, color = Trait, shape = Trait, group = paste(Trait, Train))) +
+    geom_point(size = 2) +
+    geom_line() +
+    geom_abline(data = dat_plot_snp, aes(intercept = PA, slope = 0, color = Trait), linetype = "dashed") +
+    scale_shape_manual(values=c(8, 15:18)) +
+    facet_grid(cols = vars(Train), scales = "free_y") +
+    labs(title = "FixedHB (scenario 3)",
+         x = "Window Size",
+         y = "Prediction Accuracy") +
+    theme_bw(base_size = 20) +
+    theme(axis.text.x=element_text(angle = -45, hjust = 0)) +
+    guides(color = guide_legend("Trait"), shape = guide_legend("Trait")) +
+    scale_color_brewer(palette = "Set1") 
+    
+
+```
+### FV2 Component
+### Weighted GRM
