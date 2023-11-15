@@ -12,8 +12,6 @@ See [DataDescription](https://rawcdn.githack.com/yan-cheng-lin/HBGP/40cb36d1e887
 **02-01_CrossValidation_GBLUP.R:** RScript for haplotype-based genomic prediction for all three scenario.  
 **03-01_TablesAndFigures.Rmd:** Rmarkdown for source code of the tables and figures.  
 
-For all the scripts, please change the variables in the "Settings" section to obtain the particular results.
-
 ## Authors
 Yan-Cheng Lin
 
