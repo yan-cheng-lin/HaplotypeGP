@@ -4,7 +4,7 @@ author: "Yan-Cheng Lin"
 date: '2023-11-09'
 output: 
   html_document:
-    code_folding: hide
+    code_folding: show # hide
     df_print: paged
 ---
 
@@ -755,7 +755,7 @@ dat_plot$HBMethod <- factor(dat_plot$HBMethod,
   
 
 # Fig_scen2_SNPvsHB #  
-ggplot(data = dat_plot, aes(x = PA_SNP, y = PA, color = Train, shape = Trait)) +
+ggplot(data = dat_plot, aes(x = PA_SNP, y = PA, color = Valid, shape = Trait)) +
     geom_abline(slope = 1, intercept = 0) +
     geom_point(size = 3) +
     scale_shape_manual(values = c(8, 15:18)) +
@@ -764,7 +764,7 @@ ggplot(data = dat_plot, aes(x = PA_SNP, y = PA, color = Train, shape = Trait)) +
     labs(title = "Scenario 2",
          x = "Prediction Accuracy (SNP)",
          y = "Prediction Accuracy (HB)",
-         color = "Population", shape = "Trait") +
+         color = "Prediction Set", shape = "Trait") +
     scale_color_manual(values = c(wes_palette(name="Darjeeling1")[c(1,3,5)],
                                   wes_palette(name="Rushmore")[c(3)]))   
 
