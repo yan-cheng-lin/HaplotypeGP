@@ -7,7 +7,7 @@ See [DataDescription](https://rawcdn.githack.com/yan-cheng-lin/HBGP/646f3b62edd0
 **00-02_CVSamples.R:** Sampling for cross-validation of genomic predcition.  
 **01-01_FixedHB_construction.R:** RScript for *FixedHB* haplotype construction.  
 **01-02_HaploView_construction.R:** RScript for *HaploView* haplotype construction. Should be implemented with shellscript **01-02_Run_HaploView.sh**.  
-**01-03_HaploBlocker_construction.R:** RScript for *HaploBlocker* haplotype construction. 
+**01-03_HaploBlocker_construction.R:** RScript for *HaploBlocker* haplotype construction.  
 **02-02_CrossValidation_WeightedGBLUP.R** RScript for demonstration of weighting the haplotype length in genomic relationship matrix.  
 **02-01_CrossValidation_GBLUP.R:** RScript for haplotype-based genomic prediction for all three scenario.  
 **03-01_TablesAndFigures.Rmd:** Rmarkdown for source code of the tables and figures.  
