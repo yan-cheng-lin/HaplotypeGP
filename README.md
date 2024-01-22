@@ -15,5 +15,5 @@ See [DataDescription](https://rawcdn.githack.com/yan-cheng-lin/HBGP/646f3b62edd0
 ## Authors
 Yan-Cheng Lin
 
-## Contect
+## Contact
 yancheng.lin@tum.de
